@@ -2,6 +2,7 @@ import numpy as np
 import control as ct
 import matplotlib.pyplot as plt
 import matplotlib.animation as anime
+import time
 
 # parameters
 g = 9.81  # gravity [kg*m/s^2]
@@ -35,10 +36,9 @@ def cost_eff():  # state cost Q matrix (penalizes bad performance) and input cos
     return R, Q
 
 
-def destination(st1, st2, a, b, c, d, q, r):
-    st_error = st1 - st2
+def destination(state_error, a, b, c, d, q, r):
     K, _, _ = ct.lqr(a, b, q, r)  # K, S, E
-    u_star = K @ st_error
+    u_star = K @ state_error
     return u_star
 
 
@@ -47,25 +47,39 @@ def act_state(a, state_v_min1, b, input_v_min1):
     return state_estimation
 
 
-# def graph():
+def graph(graph_err1, graph_err2, t):
+    plt.title('State error')
+    plt.xlabel('time [s/10]')
+    plt.plot(t, graph_err1, color='blue')
+    plt.plot(t, graph_err2, color='red')
+    plt.show()
 
 def main():
     A, B, C, D = arr_abcd(m, g, l)
     R, Q = cost_eff()
+    dt=0.1
     st1 = np.array([10 * deg2rad, np.sqrt(g / l)])  # start <--actual
     st2 = np.array([0, 0])  # finish
-
-    for i in range(0, 10):
+    graph_err1=[]
+    graph_err2=[]
+    t=0
+    t_list=[]
+    for i in range(0, 5):
         print(f"Iterarion={i}   Current state={st1}     Desired state={st2}")
-        state_error = st1 - st2
+        graph_err1.append(st1[0]-st2[0])
+        graph_err2.append(st1[1]-st2[1])
+        state_error=[graph_err1[i], graph_err2[i]]
         print(f"State Error={state_error}")
-        opt_ctrl_input = destination(st1, st2, A, B, C, D, Q, R)
+        opt_ctrl_input = destination(state_error, A, B, C, D, Q, R)
         st1 = act_state(A, st1, B, opt_ctrl_input)
 
+        time.sleep(dt)
+        t_list.append(t)
+        t+=dt
         if -1e-10 < state_error[0] < 1e-10 and -1e-10 < state_error[1] < 1e-10:
             print("Goal Reached!")
             break
-
+    graph(graph_err1, graph_err2, t_list)
 
 if __name__ == "__main__":
     main()
